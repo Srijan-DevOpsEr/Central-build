@@ -37,28 +37,28 @@ jobs:
             echo "Manual trigger" >> $GITHUB_STEP_SUMMARY
           fi
 
-  deploy_infrastructure:
-    runs-on: ubuntu-22.04
-    needs: who-triggered-me
-    environment: production
-    steps:
-      - name: Set up Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.11.4
-          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+  # deploy_infrastructure:
+  #   runs-on: ubuntu-22.04
+  #   needs: who-triggered-me
+  #   environment: production
+  #   steps:
+  #     - name: Set up Terraform
+  #       uses: hashicorp/setup-terraform@v3
+  #       with:
+  #         terraform_version: 1.11.4
+  #         cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
-      - name: Checkout code
-        uses: actions/checkout@v4
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Terraform Init
-        run: terraform init
+  #     - name: Terraform Init
+  #       run: terraform init
 
-      - name: Terraform Plan for Affected Resources
-        run: |
-          echo "Planning for affected resources..."
-          if [ "${{ github.event.client_payload.resource }}" == "vm" ]; then
-            terraform plan -out=tfplan.out -target=module.vm
-          elif [ "${{ github.event.client_payload.resource }}" == "network" ]; then
-            terraform plan -out=tfplan.out -target=module.network
+  #     - name: Terraform Plan for Affected Resources
+  #       run: |
+  #         echo "Planning for affected resources..."
+  #         if [ "${{ github.event.client_payload.resource }}" == "vm" ]; then
+  #           terraform plan -out=tfplan.out -target=module.vm
+  #         elif [ "${{ github.event.client_payload.resource }}" == "network" ]; then
+  #           terraform plan -out=tfplan.out -target=module.network
   
