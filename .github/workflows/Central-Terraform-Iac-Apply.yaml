@@ -1,4 +1,4 @@
-name: Central Terraform Apply Pipeline
+name: Central Terraform Apply Pipeline - PR merge
 
 on:
   repository_dispatch:
