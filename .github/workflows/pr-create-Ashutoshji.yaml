@@ -42,6 +42,7 @@ jobs:
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "Manual trigger" >> $GITHUB_STEP_SUMMARY
           fi
+          
   terraform-format:
     name: Terraform Format
     runs-on: ubuntu-latest
@@ -179,24 +180,36 @@ jobs:
   terraform-plan:
     name: Terraform Plan
     runs-on: ubuntu-latest
+    needs: 
+      - terraform-format
+      - terraform-validate
+      - terraform-tfsec
+      - terraform-checkov
+      - terraform-docs
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       AAD_CLIENT_SECRET: ${{ secrets.AAD_CLIENT_SECRET }}
-    needs: [
-      terraform-format,
-      terraform-validate,
-      terraform-tfsec,
-      terraform-checkov,
-      terraform-docs,
-    ]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: "${{ github.event.client_payload.repo_name}}"
+          repository: "${{ github.event.client_payload.repo_name }}"
+          path: push-repo  # ✅ Clone into a subfolder for isolation
+
+      - name: Detect Terraform Directory
+        id: find_tf_dir
+        run: |
+          echo "🔍 Searching for Terraform directory..."
+          TF_DIR=$(find push-repo -type f -name "*.tf" -exec dirname {} \; | sort | uniq | head -n 1)
+          echo "✅ Found TF_DIR: $TF_DIR"
+          if [ -z "$TF_DIR" ]; then
+            echo "❌ No Terraform files found. Exiting."
+            exit 1
+          fi
+          echo "tf_dir=$TF_DIR" >> $GITHUB_OUTPUT
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -205,16 +218,16 @@ jobs:
           cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
 
       - name: Terraform Init
-        run: terraform init      
-              
-      - name: Terraform Plan                
-        run: terraform plan -out=pr-plan.out -var "cfg_aad_client_secret=${{ secrets.AAD_CLIENT_SECRET }}"
+        run: terraform -chdir=${{ steps.find_tf_dir.outputs.tf_dir }} init
+
+      - name: Terraform Plan
+        run: terraform -chdir=${{ steps.find_tf_dir.outputs.tf_dir }} plan -out=pr-plan.out -var "cfg_aad_client_secret=${{ secrets.AAD_CLIENT_SECRET }}"
 
       - name: Upload plan
         uses: actions/upload-artifact@v4
         with:
           name: tfplan
-          path: pr-plan.out
+          path: ${{ steps.find_tf_dir.outputs.tf_dir }}/pr-plan.out
 
   checkov:
     name: checkov Plan
