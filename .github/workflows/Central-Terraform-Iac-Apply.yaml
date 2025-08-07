@@ -11,6 +11,38 @@ permissions:
   pull-requests: read
 
 jobs:
+  who-triggered-me:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Who triggered me?
+        run: |
+          echo "### This pipeline trigger summary " >> $GITHUB_STEP_SUMMARY
+          echo "I was triggered by ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+
+          if [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            echo "Triggered by: ${{ github.event.client_payload.triggered_by }}" >> $GITHUB_STEP_SUMMARY
+            echo 'Repository Dispatch payload:' >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+
+            jq -n \
+              --arg branch "${{ github.event.client_payload.branch }}" \
+              --arg commit_sha "${{ github.event.client_payload.commit_sha }}" \
+              --arg pr_event "${{ github.event.client_payload.pr_event }}" \
+              --arg pr_number "${{ github.event.client_payload.pr_number }}" \
+              --arg triggered_by "${{ github.event.client_payload.triggered_by }}" \
+              '{
+                branch: $branch,
+                commit_sha: $commit_sha,
+                pr_event: $pr_event,
+                pr_number: $pr_number,
+                triggered_by: $triggered_by
+              }' >> $GITHUB_STEP_SUMMARY
+
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Manual trigger" >> $GITHUB_STEP_SUMMARY
+          fi
+
   terraform-format:
     name: Terraform Format
     runs-on: ubuntu-latest
