@@ -1,14 +1,16 @@
-name: Central Terraform Apply Pipeline - PR merge
+name: Azure Networking PR Merge Pipeline
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: read
 
 on:
   repository_dispatch:
     types: [pr_apply]
   workflow_dispatch:
 
-permissions:
-  contents: write
-  id-token: write
-  pull-requests: read
+
 
 jobs:
   who-triggered-me:
@@ -46,6 +48,7 @@ jobs:
   terraform-format:
     name: Terraform Format
     runs-on: ubuntu-latest
+    # environment: production
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
@@ -71,6 +74,7 @@ jobs:
   terraform-validate:
     name: Terraform Validate
     runs-on: ubuntu-latest
+    # environment: production
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
 
@@ -92,10 +96,33 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate
+  terraform-docs:
+    name: Terraform documentation generation
+    runs-on: ubuntu-latest
+    env:
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+      ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+      ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+      AAD_CLIENT_SECRET: ${{ secrets.AAD_CLIENT_SECRET }}
+    steps:
+      - uses: actions/checkout@v3.6.0
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Render terraform docs inside the README.md and push changes back to PR branch
+        uses: terraform-docs/gh-actions@v1.0.0
+        with:
+          find-dir: .
+          output-file: README.md
+          output-method: inject
+          git-push: 'true'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   terraform-tfsec:
     name: Terraform TfSec Scanning
     runs-on: ubuntu-latest
+    # environment: production
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -125,6 +152,7 @@ jobs:
   terraform-checkov:
     name: Terraform Checkov Scanning
     runs-on: ubuntu-latest
+    # environment: production
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -151,7 +179,7 @@ jobs:
   compliance:
     name: Terraform Compliance
     runs-on: ubuntu-latest
-    needs: [terraform-format, terraform-validate, terraform-tfsec, terraform-checkov]
+    needs: [terraform-format, terraform-plan, terraform-validate, terraform-tfsec, terraform-checkov]
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -185,7 +213,9 @@ jobs:
         run: terraform show -json pr-plan.out > tfplan.json
 
       - name: Install terraform-compliance
-        run: pip install terraform-compliance
+        run: |
+          pip install terraform-compliance
+
 
       # - name: Run terraform-compliance
       #   run: terraform-compliance -p tfplan.json -f features/
@@ -193,7 +223,7 @@ jobs:
   terratest:
     name: Terratest
     runs-on: ubuntu-latest
-    needs: [terraform-format, terraform-validate, terraform-tfsec, terraform-checkov]
+    needs: [terraform-format, terraform-plan, terraform-validate, terraform-tfsec, terraform-checkov]
     env:
       TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -273,3 +303,57 @@ jobs:
 
       - name: Terraform Apply
         run: terraform apply -auto-approve pr-plan.out
+        env:
+          TF_TOKEN_app_terraform_io: ${{ secrets.TF_API_TOKEN }}
+
+  # compliance:
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+
+  #     - name: Install dependencies
+  #       run: |
+  #         sudo apt-get install jq curl
+
+  #     - name: Fetch plan JSON from TFC
+  #       env:
+  #         TFC_TOKEN: ${{ secrets.TF_API_TOKEN }}
+  #         TFC_ORG: SivajiRaavi
+  #         TFC_WORKSPACE: azure-recovery-services-vault-dev
+  #       run: |
+  #         # Get workspace ID
+  #         WORKSPACE_ID=$(curl -s \
+  #           --header "Authorization: Bearer $TFC_TOKEN" \
+  #           https://app.terraform.io/api/v2/organizations/$TFC_ORG/workspaces/$TFC_WORKSPACE \
+  #           | jq -r '.data.id')
+
+  #         # Get latest run ID
+  #         RUN_ID=$(curl -s \
+  #           --header "Authorization: Bearer $TFC_TOKEN" \
+  #           https://app.terraform.io/api/v2/workspaces/$WORKSPACE_ID/runs \
+  #           | jq -r '.data[0].id')
+
+  #         # Get plan ID
+  #         PLAN_ID=$(curl -s \
+  #           --header "Authorization: Bearer $TFC_TOKEN" \
+  #           https://app.terraform.io/api/v2/runs/$RUN_ID \
+  #           | jq -r '.data.relationships.plan.data.id')
+
+  #         # Get the JSON plan download URL
+  #         PLAN_JSON_URL=$(curl -s \
+  #           --header "Authorization: Bearer $TFC_TOKEN" \
+  #           https://app.terraform.io/api/v2/plans/$PLAN_ID/json-output \
+  #           | jq -r '.data.attributes."hosted-json-url"')
+
+  #         # Download JSON plan
+  #         curl -s -H "Authorization: Bearer $TFC_TOKEN" "$PLAN_JSON_URL" -o tfplan.json
+
+  #     - name: Run terraform-compliance
+  #       run: |
+  #         docker run --rm \
+  #           -v ${{ github.workspace }}:/target \
+  #           eerkunt/terraform-compliance \
+  #           -p /target/tfplan.json \
+  #           -f /target/features
