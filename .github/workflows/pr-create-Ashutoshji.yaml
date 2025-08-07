@@ -56,8 +56,6 @@ jobs:
           repository: "${{ github.event.client_payload.triggered_by }}"
           ref: "${{ github.event.client_payload.branch }}"
 
-      - name: Checkout specific commit
-        run: git checkout "${{ github.event.client_payload.commit_sha }}"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -87,8 +85,6 @@ jobs:
           repository: "${{ github.event.client_payload.triggered_by }}"
           ref: "${{ github.event.client_payload.branch }}"
 
-      - name: Checkout specific commit
-        run: git checkout "${{ github.event.client_payload.commit_sha }}"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -143,7 +139,6 @@ jobs:
         with:
           repository: "${{ github.event.client_payload.triggered_by }}"
           ref: "${{ github.event.client_payload.branch }}"
-      - run: git checkout "${{ github.event.client_payload.commit_sha }}"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -174,7 +169,6 @@ jobs:
         with:
           repository: "${{ github.event.client_payload.triggered_by }}"
           ref: "${{ github.event.client_payload.branch }}"
-      - run: git checkout "${{ github.event.client_payload.commit_sha }}"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -213,7 +207,6 @@ jobs:
         with:
           repository: "${{ github.event.client_payload.triggered_by }}"
           ref: "${{ github.event.client_payload.branch }}"
-      - run: git checkout "${{ github.event.client_payload.commit_sha }}"
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -250,8 +243,7 @@ jobs:
         with:
           repository: "${{ github.event.client_payload.triggered_by }}"
           ref: "${{ github.event.client_payload.branch }}"
-      - run: git checkout "${{ github.event.client_payload.commit_sha }}"
-
+  
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -296,7 +288,6 @@ jobs:
         with:
           repository: "${{ github.event.client_payload.triggered_by }}"
           ref: "${{ github.event.client_payload.branch }}"
-      - run: git checkout "${{ github.event.client_payload.commit_sha }}"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -340,7 +331,6 @@ jobs:
         with:
           repository: "${{ github.event.client_payload.triggered_by }}"
           ref: "${{ github.event.client_payload.branch }}"
-      - run: git checkout "${{ github.event.client_payload.commit_sha }}"
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
