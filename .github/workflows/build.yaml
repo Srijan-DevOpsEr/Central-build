@@ -1,9 +1,8 @@
 name: Orchestrate Build & Deploy
 
 on:
-  workflow_dispatch:  # Allows manual triggering from the GitHub UI
   repository_dispatch:
-    types: [dependency_updated]  # Custom event type for IaC repos
+    types: [dependency_updated]  # Custom event type triggered by child repo events
 
 jobs:
   who-triggered-me:
@@ -27,6 +26,31 @@ jobs:
     needs: who-triggered-me
     environment: production
     steps:
-      - run: echo "Simulating Infrastructure Deployment..."  # Simulate deployment or any other action
-      - run: |
-          echo "Simulated deployment would occur here."
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.11.4
+          cli_config_credentials_token: ${{ secrets.TF_API_TOKEN }}
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Plan for Affected Resources
+        run: |
+          echo "Planning for affected resources..."
+          if [ "${{ github.event.client_payload.resource }}" == "vm" ]; then
+            terraform plan -out=tfplan.out -target=module.vm  # Target only the VM module if changes are detected in VM resources
+          elif [ "${{ github.event.client_payload.resource }}" == "network" ]; then
+            terraform plan -out=tfplan.out -target=module.network  # Target only the Network module if changes are detected in network resources
+          else
+            terraform plan -out=tfplan.out  # Default plan for all resources
+          fi
+
+      - name: Terraform Apply for Affected Resources
+        run: |
+          echo "Applying changes to affected resources..."
+          terraform apply -auto-approve tfplan.out
+
