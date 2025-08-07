@@ -218,7 +218,7 @@ jobs:
         run: terraform init      
               
       - name: Terraform Plan                
-        run: terraform plan -out=pr-plan.out -var "cfg_aad_client_secret=${{ secrets.AAD_CLIENT_SECRET }}"
+        run: terraform plan -out=pr-plan.out #-var "cfg_aad_client_secret=${{ secrets.AAD_CLIENT_SECRET }}"
 
       - name: Upload plan
         uses: actions/upload-artifact@v4
